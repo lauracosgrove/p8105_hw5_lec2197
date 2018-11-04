@@ -113,4 +113,17 @@ prop_homicides <- prop_homicides %>%
 ```
 
 
+```{r} 
+prop_homicides %>% 
+  mutate(city_state = factor(city_state)) %>% 
+  mutate(city_state = forcats::fct_reorder(city_state, estimate)) %>% 
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  ggthemes::theme_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = rel(0.8))) +
+  geom_hline(yintercept = 0.50, color = "blue", size = 0.2) +
+  labs(title = "Proportion of Unsolved Homicides in Major US Cities",
+       caption = "Data from Washington Post")
+```
 

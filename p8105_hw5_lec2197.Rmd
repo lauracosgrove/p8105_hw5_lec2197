@@ -20,10 +20,10 @@ library(tidyverse)
 ```{r}
 
 directory_base <- "./data/"
-data <- tibble(files = str_c(directory_base, list.files("./data")))
+study_data <- tibble(files = str_c(directory_base, list.files("./data")))
 
-data <- data %>% 
-  mutate(subject_data = map(data$files, read_csv)) %>% 
+study_data <- study_data %>% 
+  mutate(subject_data = map(study_data$files, read_csv)) %>% 
   unnest() %>% 
   mutate(files = str_replace(files, "./data/", "")) %>% 
   mutate(files = str_replace(files, ".csv", "")) %>% 
@@ -34,7 +34,7 @@ data <- data %>%
   gather(key = week, value = value, starts_with("week")) %>% 
   mutate(week = as.numeric(str_replace(week, "week_", "")))
 
-data %>% 
+study_data %>% 
   ggplot(aes(x = week, y = value, color = subject_ID)) +
   geom_line() +
   facet_grid(~group) +
@@ -44,3 +44,33 @@ data %>%
 ```
 
 The experimental group shows a general trend of increase over time, while the control group's trend is largely static.
+
+## Problem 2
+
+```{r}
+homicide_data <- read_csv("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv")
+
+homicide_data %>% 
+  mutate(year_reported = str_sub(reported_date, 1, 4)) %>% 
+  distinct(year_reported) %>% 
+  arrange(as.numeric(year_reported))
+
+homicide_data %>% 
+  distinct(disposition)
+
+```
+
+This dataset contains information about `r nrow(homicide_data)` homicides in `r nrow(homicide_data %>% distinct(city))` U.S. cities in `r nrow(homicide_data %>% distinct(state))` states reported from 2007 to 2017. The victim's name, rage, age, and sex are reported for each homicide, as well as the status of the case (closed without arrest, closed by arrest, or open).
+
+_Create a city_state variable (e.g. “Baltimore, MD”) and then summarize within cities to obtain the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”)._
+
+```{r}
+homicide_data %>% 
+  mutate(city_state = str_c(city, state, sep = ", ")) %>%
+  select(city_state, disposition) %>% 
+  group_by(city_state) %>%
+  mutate(unsolved = ifelse(disposition == "Open/No arrest", 1, 0)) %>% 
+  summarize(total = n(),
+            unsolved = sum(unsolved))
+```
+

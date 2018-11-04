@@ -28,6 +28,19 @@ data <- data %>%
   mutate(files = str_replace(files, "./data/", "")) %>% 
   mutate(files = str_replace(files, ".csv", "")) %>% 
   mutate(group = str_detect(files, "con")) %>% 
-  mutate(group = ifelse(group == TRUE, "control", "experimental"))
+  mutate(group = ifelse(group == TRUE, "control", "experimental")) %>% 
+  mutate(files = as.factor(str_replace(files, "^..._", ""))) %>% 
+  rename(subject_ID = files) %>%
+  gather(key = week, value = value, starts_with("week")) %>% 
+  mutate(week = as.numeric(str_replace(week, "week_", "")))
+
+data %>% 
+  ggplot(aes(x = week, y = value, color = subject_ID)) +
+  geom_line() +
+  facet_grid(~group) +
+  labs(
+    title = "Control and Experimental Change Over Time"
+  )
 ```
 
+The experimental group shows a general trend of increase over time, while the control group's trend is largely static.

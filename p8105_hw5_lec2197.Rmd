@@ -6,21 +6,19 @@ output: github_document
 ---
 
 ## Problem 1
-Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time:
-
-Start with a dataframe containing all file names; the list.files function will help
-Iterate over file names and read in data for each subject using purrr::map and saving the result as a new variable in the dataframe
-Tidy the result; manipulate file names to include control arm and subject ID, make sure weekly observations are “tidy”, and do any other tidying that’s necessary
-Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
 
 ```{r packages}
 library(tidyverse)
 ```
 
-```{r}
+First, I'll create  a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time, by reading in data from multiple files.
+
+```{r load and tidy study data, message=FALSE}
 
 directory_base <- "./data/"
 study_data <- tibble(files = str_c(directory_base, list.files("./data")))
+
+#Reading data from multipe files and clean observation names
 
 study_data <- study_data %>% 
   mutate(subject_data = map(study_data$files, read_csv)) %>% 
@@ -43,9 +41,11 @@ study_data %>%
   )
 ```
 
-The experimental group shows a general trend of increase over time, while the control group's trend is largely static.
+The experimental group shows a general trend of increase over time, while the control group's trend is largely static. This dataset looks promising for further hypothesis testing analyses.
 
 ## Problem 2
+
+The Washington Post gathered homicide data on large U.S. cities, and made the data public as part of their investigation. First, I'll load in the raw data and look at the years reported it covers as well as the outcomes it studies.
 
 ```{r}
 homicide_data <- read_csv("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv")
@@ -62,9 +62,9 @@ homicide_data %>%
 
 This dataset contains information about `r nrow(homicide_data)` homicides in `r nrow(homicide_data %>% distinct(city))` U.S. cities in `r nrow(homicide_data %>% distinct(state))` states reported from 2007 to 2017. The victim's name, rage, age, and sex are reported for each homicide, as well as the status of the case (closed without arrest, closed by arrest, or open).
 
-_Create a city_state variable (e.g. “Baltimore, MD”) and then summarize within cities to obtain the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”)._
+Next, I'll create a variable to look at the summary data within cities: the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
 
-```{r}
+```{r proportion total vs unsolved dataframe}
 prop_homicides <- homicide_data %>% 
   mutate(city_state = str_c(city, state, sep = ", ")) %>%
   select(city_state, disposition) %>% 
@@ -72,11 +72,33 @@ prop_homicides <- homicide_data %>%
   mutate(unsolved = ifelse(disposition == "Open/No arrest", 1, 0)) %>% 
   summarize(total = n(),
             unsolved = sum(unsolved))
+
+prop_homicides %>% 
+  knitr::kable()
 ```
 
-For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+Tulsa, AL seems to have some strange data: This might be a miscoding. I will explore:
 
-```{r}
+```{r explore weird tulsa data}
+prop_homicides %>% 
+  filter(city_state == "Tulsa, AL")
+
+homicide_data %>% 
+  filter(state == "AL" & city == "Tulsa")
+```
+
+Since there's only one entry, it's probably miscoded either for Tulsa, OK or Birmingham, AL. I'm not sure which, so I'll remove it for the final analyses below:
+
+```{r remove tulsa al}
+prop_homicides <- prop_homicides %>% 
+  filter(city_state != "Tulsa, AL")
+```
+
+### Exploring Estimates for Proportions of Unsolved Murders
+
+For Baltimore, MD, I will  estimate the proportion of homicides that are unsolved using `prop.test`, save the output of prop.test as an R object, and apply `broom::tidy` to this object in order to pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+
+```{r baltimore}
 baltimore_data <- prop_homicides %>% 
   filter(city_state == "Baltimore, MD")
 
@@ -91,11 +113,9 @@ baltimore_proptest %>%
 baltimore_proptest %>% 
   pull(conf.high)
 
-
 ```
 
-Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and  unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
-
+Using this method as a framework, I'll create a function to run `prop.test` for each of the cities in my dataset, and I will extract both the proportion of unsolved homicides and the confidence interval for each and save that in the previous `prop_homicides` dataframe.
 
 ```{r}
 prop_homicides <- nest(prop_homicides, total:unsolved) 
@@ -113,6 +133,8 @@ prop_homicides <- prop_homicides %>%
 ```
 
 
+Finally, I'll use a scatter plot with error bars to visualize the differences by city in the point estimates of the proportion and confidence intervals given by the proportion test.  
+
 ```{r} 
 prop_homicides %>% 
   mutate(city_state = factor(city_state)) %>% 
@@ -126,4 +148,6 @@ prop_homicides %>%
   labs(title = "Proportion of Unsolved Homicides in Major US Cities",
        caption = "Data from Washington Post")
 ```
+
+
 
